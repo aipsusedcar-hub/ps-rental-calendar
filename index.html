@@ -21,7 +21,9 @@ main{padding:16px}.nav{display:flex;align-items:center;justify-content:space-bet
 .week div{text-align:center;color:var(--muted);font-size:13px;padding:8px 0;font-weight:700}
 .day{height:44px;border:0;background:#fff;border-radius:22px;font-size:16px;cursor:pointer}
 .day:disabled{color:#d0d5dd;cursor:default}.day.today{outline:1px solid var(--o);color:var(--o)}
-.day.sel{background:var(--o);color:#fff;font-weight:700}.day.inrange{background:#ffedd5}
+.day.sel{background:var(--o);color:#fff;font-weight:700}.day.inrange{background:#ffedd5;border-radius:6px}
+.tabs button.on{background:#fff;color:var(--o);font-weight:700}
+.sum{margin-top:16px;border-top:1px solid var(--line);padding-top:14px;font-size:15px;text-align:center}.sum b{color:var(--o)}
 .timebox{display:none;margin-top:16px;border-top:1px solid var(--line);padding-top:14px}.timebox.show{display:block}
 .tt{font-weight:700;font-size:16px;margin-bottom:10px}.tt span{color:var(--o)}
 .times{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
@@ -35,7 +37,7 @@ main{padding:16px}.nav{display:flex;align-items:center;justify-content:space-bet
 #msg,#err{font-size:13px;text-align:center;margin-top:14px}#err{color:#b42318}
 </style></head>
 <body><div class="app">
-<div class="head"><b>เลือกวันเช่ารถ</b><div class="hint">กดเลือกวันที่ แล้วเลือกสถานที่และเวลาได้เลย</div>
+<div class="head"><b>เลือกวันเช่ารถ</b><div class="hint">แตะวันรับรถ แล้วแตะวันคืนรถ จากนั้นกดยืนยัน</div>
 <div class="tabs"><button id="tabPickup">วันรับรถ<small id="pickTxt">-</small></button><button id="tabReturn">วันคืนรถ<small id="retTxt">-</small></button></div></div>
 <main>
 <div class="nav"><button id="prevBtn" aria-label="เดือนก่อน">‹</button><button id="yearLabel" class="label"></button><button id="nextBtn" aria-label="เดือนถัดไป">›</button></div>
@@ -43,40 +45,31 @@ main{padding:16px}.nav{display:flex;align-items:center;justify-content:space-bet
 <div class="nav"><button id="monthLabel" class="label" style="width:auto"></button><span></span><span></span></div>
 <div class="week"><div>อา</div><div>จ</div><div>อ</div><div>พ</div><div>พฤ</div><div>ศ</div><div>ส</div></div>
 <div id="grid" class="grid"></div>
-<div id="timeBox" class="timebox"><div class="tt" id="locTitle"></div><div id="locs" class="locs"></div><input id="locIn" class="locin" maxlength="120" placeholder="พิมพ์สถานที่ เช่น โรงแรม..., ที่อยู่"><div class="tt" id="timeTitle" style="margin-top:16px"></div><div id="times" class="times"></div><button id="sendBtn" class="send" disabled>ยืนยันวัน สถานที่ และเวลา</button></div>
+<div class="sum" id="sum">กรุณาแตะเลือก<b>วันรับรถ</b></div>
+<button id="sendBtn" class="send" disabled>กรุณาเลือกวันรับรถ</button>
 <div id="msg"></div><div id="err"></div>
-<div style="text-align:center;color:#d0d5dd;font-size:11px;margin-top:18px">v7 · 2026-11-12</div>
+<div style="text-align:center;color:#d0d5dd;font-size:11px;margin-top:18px">v8 · 2026-11-12</div>
 </main></div>
 <script>
 const LIFF_ID='2012569735-v6ST3dSo';
 const months=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
 const $=id=>document.getElementById(id);
 const now=new Date(),minDate=new Date(now.getFullYear(),now.getMonth(),now.getDate()),maxDate=new Date(now.getFullYear()+2,11,31);
-const qs=new URLSearchParams(location.search);
-// ใช้วันที่ตามเวลาเครื่อง (ไทย) ไม่ใช่ UTC — กันวันที่เลื่อนไป 1 วัน
-const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const mAbbr=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 const dmy=d=>d.getDate()+' '+mAbbr[d.getMonth()]+' '+(d.getFullYear()+543);
-const parse=s=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||'');return m?new Date(+m[1],m[2]-1,+m[3]):null};
 const th=d=>d?dmy(d):'-';
-let step=qs.get('step')==='return'?'return':'pickup';
-let pickupDate=parse(qs.get('pickup'))||parse(sessionStorage.getItem('psPickup'));
-let returnDate=null,selDate=null,selTime=null,selLoc=null;
-// สถานที่รับ-คืนรถ (ตรงกับปุ่มในแชตบอต)
-const LOCS=['บขส.','สนามบิน','อื่นๆ'];
-// ช่วงเวลา 08:00–18:00 ทุก 30 นาที (แก้ตรงนี้ได้)
-const TIMES=[];for(let h=8;h<=18;h++){TIMES.push(String(h).padStart(2,'0')+':00');if(h<18)TIMES.push(String(h).padStart(2,'0')+':30')}
-if(pickupDate&&pickupDate<minDate)pickupDate=null;
-let view=new Date((pickupDate||minDate).getFullYear(),(pickupDate||minDate).getMonth(),1);
+// v8: เลือกวันรับ + วันคืนในปฏิทินเดียว (แตะครั้งแรก = วันรับ, ครั้งที่สอง = วันคืน)
+let pickupDate=null,returnDate=null,focus='pickup';
+let view=new Date(minDate.getFullYear(),minDate.getMonth(),1);
 const ready=liff.init({liffId:LIFF_ID}).catch(e=>{$('err').textContent='เปิด LIFF ไม่สำเร็จ: '+(e.message||e);throw e});
 const sameDay=(a,b)=>a&&b&&a.toDateString()===b.toDateString();
-const lowest=()=>step==='return'&&pickupDate?pickupDate:minDate;
-function setStep(s){step=s;selDate=null;selTime=null;selLoc=null;$('locIn').value='';$('timeBox').classList.remove('show');$('tabPickup').classList.toggle('on',s==='pickup');$('tabReturn').classList.toggle('on',s==='return');draw()}
 function draw(){
   $('yearLabel').textContent=view.getFullYear()+543;$('monthLabel').textContent=months[view.getMonth()];
   $('pickTxt').textContent=th(pickupDate);$('retTxt').textContent=th(returnDate);
+  $('tabPickup').classList.toggle('on',focus==='pickup');$('tabReturn').classList.toggle('on',focus==='return');
   const g=$('grid');g.innerHTML='';
-  const first=new Date(view.getFullYear(),view.getMonth(),1).getDay(),days=new Date(view.getFullYear(),view.getMonth()+1,0).getDate(),lo=lowest();
+  const first=new Date(view.getFullYear(),view.getMonth(),1).getDay(),days=new Date(view.getFullYear(),view.getMonth()+1,0).getDate();
+  const lo=focus==='return'&&pickupDate?pickupDate:minDate;
   for(let i=0;i<first;i++)g.appendChild(document.createElement('span'));
   for(let d=1;d<=days;d++){
     const date=new Date(view.getFullYear(),view.getMonth(),d),b=document.createElement('button');
@@ -89,57 +82,43 @@ function draw(){
   }
   $('prevBtn').disabled=view<=new Date(minDate.getFullYear(),minDate.getMonth(),1);
   $('nextBtn').disabled=view>=new Date(maxDate.getFullYear(),maxDate.getMonth(),1);
+  upd();
+}
+function upd(){
+  const ok=pickupDate&&returnDate;
+  if(!pickupDate)$('sum').innerHTML='กรุณาแตะเลือก<b>วันรับรถ</b>';
+  else if(!returnDate)$('sum').innerHTML='รับรถ <b>'+dmy(pickupDate)+'</b><br>แตะเลือก<b>วันคืนรถ</b> ต่อได้เลยค่ะ';
+  else{const n=Math.round((returnDate-pickupDate)/86400000)+1;$('sum').innerHTML='รับรถ <b>'+dmy(pickupDate)+'</b> → คืนรถ <b>'+dmy(returnDate)+'</b><br>รวม '+n+' วัน'}
+  $('sendBtn').disabled=!ok;
+  $('sendBtn').textContent=ok?'ยืนยันวันรับ-คืนรถ':(!pickupDate?'กรุณาเลือกวันรับรถ':'กรุณาเลือกวันคืนรถ');
 }
 function clampView(){const lo=new Date(minDate.getFullYear(),minDate.getMonth(),1),hi=new Date(maxDate.getFullYear(),maxDate.getMonth(),1);if(view<lo)view=lo;if(view>hi)view=hi}
 function years(){const p=$('yearPicker');p.innerHTML='';for(let y=minDate.getFullYear();y<=maxDate.getFullYear();y++){const b=document.createElement('button');b.textContent=y+543;b.className=y===view.getFullYear()?'active':'';b.onclick=()=>{view=new Date(y,view.getMonth(),1);clampView();p.classList.remove('show');draw()};p.appendChild(b)}}
 function mons(){const p=$('monthPicker');p.innerHTML='';for(let m=0;m<12;m++){const b=document.createElement('button');b.textContent=months[m];b.disabled=new Date(view.getFullYear(),m+1,0)<minDate||new Date(view.getFullYear(),m,1)>maxDate;b.className=m===view.getMonth()?'active':'';b.onclick=()=>{view=new Date(view.getFullYear(),m,1);p.classList.remove('show');draw()};p.appendChild(b)}}
 function pick(date){
-  if(step==='pickup'){pickupDate=date;sessionStorage.setItem('psPickup',iso(date));if(returnDate&&returnDate<date)returnDate=null}else returnDate=date;
-  selDate=date;selTime=null;selLoc=null;$('locIn').value='';$('err').textContent='';$('msg').textContent='';draw();drawTimes();
-  $('timeBox').classList.add('show');setTimeout(()=>$('timeBox').scrollIntoView({behavior:'smooth',block:'start'}),50);
-}
-function drawTimes(){
-  $('timeTitle').innerHTML=(step==='pickup'?'เลือกเวลารับรถ':'เลือกเวลาคืนรถ')+' · <span>'+dmy(selDate)+'</span>';
-  const box=$('times');box.innerHTML='';const n=new Date(),isToday=sameDay(selDate,n),cur=n.getHours()*60+n.getMinutes();
-  TIMES.forEach(t=>{const b=document.createElement('button');b.textContent=t;const[h,m]=t.split(':').map(Number);
-    if(isToday&&h*60+m<=cur)b.disabled=true;
-    if(t===selTime)b.classList.add('sel');
-    b.onclick=()=>{selTime=t;drawTimes()};box.appendChild(b)});
-  drawLocs();
-}
-const locVal=()=>selLoc==='อื่นๆ'?$('locIn').value.trim():selLoc;
-function drawLocs(){
-  $('locTitle').textContent=step==='pickup'?'สถานที่รับรถ':'สถานที่คืนรถ';
-  const box=$('locs');box.innerHTML='';
-  LOCS.forEach(v=>{const b=document.createElement('button');b.textContent=v==='อื่นๆ'?'อื่นๆ (พิมพ์)':v;if(v===selLoc)b.classList.add('sel');
-    b.onclick=()=>{selLoc=v;drawLocs();if(v==='อื่นๆ')$('locIn').focus()};box.appendChild(b)});
-  $('locIn').classList.toggle('show',selLoc==='อื่นๆ');
-  updSend();
-}
-function updSend(){
-  const l=locVal(),ok=selTime&&l&&l.length>=2;
-  $('sendBtn').disabled=!ok;
-  $('sendBtn').textContent=ok?'ยืนยัน '+dmy(selDate)+' '+selTime+' น. · '+l:(!(l&&l.length>=2)?'กรุณาเลือกสถานที่':'กรุณาเลือกเวลา');
+  $('err').textContent='';$('msg').textContent='';
+  if(focus==='pickup'||!pickupDate||date<pickupDate){pickupDate=date;if(returnDate&&returnDate<date)returnDate=null;focus='return'}
+  else{returnDate=date}
+  draw();
 }
 async function send(){
-  const loc=locVal();if(!selDate||!selTime||!loc||loc.length<2)return;
+  if(!pickupDate||!returnDate)return;
   $('sendBtn').disabled=true;$('msg').textContent='กำลังส่งข้อมูลที่เลือก...';$('err').textContent='';
   try{
     await ready;
     if(!liff.isInClient())throw Error('กรุณาเปิดจากแชต LINE โดยตรง');
     const t=liff.getContext()&&liff.getContext().type;
     if(t&&!['utou','group','room'].includes(t))throw Error('กรุณาเปิดลิงก์นี้จากห้องแชต LINE (ไม่ใช่จากเมนู/เบราว์เซอร์)');
-    await liff.sendMessages([{type:'text',text:(step==='pickup'?'เลือกวันรับรถ ':'เลือกวันคืนรถ ')+dmy(selDate)+' เวลา '+selTime+' น. สถานที่ '+loc.replace(/\s+/g,' ')}]);
+    await liff.sendMessages([{type:'text',text:'เลือกวันรับรถ '+dmy(pickupDate)+' วันคืนรถ '+dmy(returnDate)}]);
     $('msg').textContent='ส่งเรียบร้อยแล้ว';setTimeout(()=>liff.closeWindow(),300);
   }catch(e){$('sendBtn').disabled=false;$('msg').textContent='';$('err').textContent='ส่งไม่สำเร็จ: '+(e.code?e.code+' - ':'')+(e.message||e)}
 }
 $('sendBtn').onclick=send;
-$('locIn').oninput=updSend;
 $('prevBtn').onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()-1,1);draw()};
 $('nextBtn').onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()+1,1);draw()};
 $('yearLabel').onclick=()=>{$('monthPicker').classList.remove('show');$('yearPicker').classList.toggle('show');years()};
 $('monthLabel').onclick=()=>{$('yearPicker').classList.remove('show');$('monthPicker').classList.toggle('show');mons()};
-$('tabPickup').onclick=()=>setStep('pickup');
-$('tabReturn').onclick=()=>setStep('return');
-setStep(step);
+$('tabPickup').onclick=()=>{focus='pickup';draw()};
+$('tabReturn').onclick=()=>{if(pickupDate){focus='return';draw()}};
+draw();
 </script></body></html>
