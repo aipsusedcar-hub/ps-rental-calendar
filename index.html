@@ -22,18 +22,26 @@ main{padding:16px}.nav{display:flex;align-items:center;justify-content:space-bet
 .day{height:44px;border:0;background:#fff;border-radius:22px;font-size:16px;cursor:pointer}
 .day:disabled{color:#d0d5dd;cursor:default}.day.today{outline:1px solid var(--o);color:var(--o)}
 .day.sel{background:var(--o);color:#fff;font-weight:700}.day.inrange{background:#ffedd5}
+.timebox{display:none;margin-top:16px;border-top:1px solid var(--line);padding-top:14px}.timebox.show{display:block}
+.tt{font-weight:700;font-size:16px;margin-bottom:10px}.tt span{color:var(--o)}
+.times{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.times button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 0;font-size:15px;cursor:pointer}
+.times button.sel{background:var(--o);border-color:var(--o);color:#fff;font-weight:700}.times button:disabled{color:#d0d5dd;cursor:default}
+.send{width:100%;margin-top:14px;border:0;border-radius:12px;padding:14px;background:var(--o);color:#fff;font-size:16px;font-weight:700;cursor:pointer}.send:disabled{background:#fed7aa}
 #msg,#err{font-size:13px;text-align:center;margin-top:14px}#err{color:#b42318}
 </style></head>
 <body><div class="app">
-<div class="head"><b>เลือกวันเช่ารถ</b><div class="hint">กดเลือกปี เดือน และวันที่ได้เลย</div>
+<div class="head"><b>เลือกวันเช่ารถ</b><div class="hint">กดเลือกวันที่ แล้วเลือกเวลาได้เลย</div>
 <div class="tabs"><button id="tabPickup">วันรับรถ<small id="pickTxt">-</small></button><button id="tabReturn">วันคืนรถ<small id="retTxt">-</small></button></div></div>
 <main>
 <div class="nav"><button id="prevBtn" aria-label="เดือนก่อน">‹</button><button id="yearLabel" class="label"></button><button id="nextBtn" aria-label="เดือนถัดไป">›</button></div>
 <div id="yearPicker" class="picker"></div><div id="monthPicker" class="picker"></div>
 <div class="nav"><button id="monthLabel" class="label" style="width:auto"></button><span></span><span></span></div>
 <div class="week"><div>อา</div><div>จ</div><div>อ</div><div>พ</div><div>พฤ</div><div>ศ</div><div>ส</div></div>
-<div id="grid" class="grid"></div><div id="msg"></div><div id="err"></div>
-<div style="text-align:center;color:#d0d5dd;font-size:11px;margin-top:18px">v4 · 2026-11-12</div>
+<div id="grid" class="grid"></div>
+<div id="timeBox" class="timebox"><div class="tt" id="timeTitle"></div><div id="times" class="times"></div><button id="sendBtn" class="send" disabled>ยืนยันวันและเวลา</button></div>
+<div id="msg"></div><div id="err"></div>
+<div style="text-align:center;color:#d0d5dd;font-size:11px;margin-top:18px">v5 · 2026-11-12</div>
 </main></div>
 <script>
 const LIFF_ID='2012569735-v6ST3dSo';
@@ -49,13 +57,15 @@ const parse=s=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||'');return m?new Dat
 const th=d=>d?dmy(d):'-';
 let step=qs.get('step')==='return'?'return':'pickup';
 let pickupDate=parse(qs.get('pickup'))||parse(sessionStorage.getItem('psPickup'));
-let returnDate=null;
+let returnDate=null,selDate=null,selTime=null;
+// ช่วงเวลา 08:00–18:00 ทุก 30 นาที (แก้ตรงนี้ได้)
+const TIMES=[];for(let h=8;h<=18;h++){TIMES.push(String(h).padStart(2,'0')+':00');if(h<18)TIMES.push(String(h).padStart(2,'0')+':30')}
 if(pickupDate&&pickupDate<minDate)pickupDate=null;
 let view=new Date((pickupDate||minDate).getFullYear(),(pickupDate||minDate).getMonth(),1);
 const ready=liff.init({liffId:LIFF_ID}).catch(e=>{$('err').textContent='เปิด LIFF ไม่สำเร็จ: '+(e.message||e);throw e});
 const sameDay=(a,b)=>a&&b&&a.toDateString()===b.toDateString();
 const lowest=()=>step==='return'&&pickupDate?pickupDate:minDate;
-function setStep(s){step=s;$('tabPickup').classList.toggle('on',s==='pickup');$('tabReturn').classList.toggle('on',s==='return');draw()}
+function setStep(s){step=s;selDate=null;selTime=null;$('timeBox').classList.remove('show');$('tabPickup').classList.toggle('on',s==='pickup');$('tabReturn').classList.toggle('on',s==='return');draw()}
 function draw(){
   $('yearLabel').textContent=view.getFullYear()+543;$('monthLabel').textContent=months[view.getMonth()];
   $('pickTxt').textContent=th(pickupDate);$('retTxt').textContent=th(returnDate);
@@ -65,7 +75,7 @@ function draw(){
   for(let d=1;d<=days;d++){
     const date=new Date(view.getFullYear(),view.getMonth(),d),b=document.createElement('button');
     b.className='day';b.textContent=d;
-    if(date<lo||date>maxDate)b.disabled=true;else b.onclick=()=>send(date);
+    if(date<lo||date>maxDate)b.disabled=true;else b.onclick=()=>pick(date);
     if(sameDay(date,now))b.classList.add('today');
     if(sameDay(date,pickupDate)||sameDay(date,returnDate))b.classList.add('sel');
     else if(pickupDate&&returnDate&&date>pickupDate&&date<returnDate)b.classList.add('inrange');
@@ -77,18 +87,34 @@ function draw(){
 function clampView(){const lo=new Date(minDate.getFullYear(),minDate.getMonth(),1),hi=new Date(maxDate.getFullYear(),maxDate.getMonth(),1);if(view<lo)view=lo;if(view>hi)view=hi}
 function years(){const p=$('yearPicker');p.innerHTML='';for(let y=minDate.getFullYear();y<=maxDate.getFullYear();y++){const b=document.createElement('button');b.textContent=y+543;b.className=y===view.getFullYear()?'active':'';b.onclick=()=>{view=new Date(y,view.getMonth(),1);clampView();p.classList.remove('show');draw()};p.appendChild(b)}}
 function mons(){const p=$('monthPicker');p.innerHTML='';for(let m=0;m<12;m++){const b=document.createElement('button');b.textContent=months[m];b.disabled=new Date(view.getFullYear(),m+1,0)<minDate||new Date(view.getFullYear(),m,1)>maxDate;b.className=m===view.getMonth()?'active':'';b.onclick=()=>{view=new Date(view.getFullYear(),m,1);p.classList.remove('show');draw()};p.appendChild(b)}}
-async function send(date){
+function pick(date){
   if(step==='pickup'){pickupDate=date;sessionStorage.setItem('psPickup',iso(date));if(returnDate&&returnDate<date)returnDate=null}else returnDate=date;
-  draw();$('msg').textContent='กำลังส่งวันที่เลือก...';$('err').textContent='';
+  selDate=date;selTime=null;$('err').textContent='';$('msg').textContent='';draw();drawTimes();
+  $('timeBox').classList.add('show');setTimeout(()=>$('timeBox').scrollIntoView({behavior:'smooth',block:'start'}),50);
+}
+function drawTimes(){
+  $('timeTitle').innerHTML=(step==='pickup'?'เลือกเวลารับรถ':'เลือกเวลาคืนรถ')+' · <span>'+dmy(selDate)+'</span>';
+  const box=$('times');box.innerHTML='';const n=new Date(),isToday=sameDay(selDate,n),cur=n.getHours()*60+n.getMinutes();
+  TIMES.forEach(t=>{const b=document.createElement('button');b.textContent=t;const[h,m]=t.split(':').map(Number);
+    if(isToday&&h*60+m<=cur)b.disabled=true;
+    if(t===selTime)b.classList.add('sel');
+    b.onclick=()=>{selTime=t;drawTimes()};box.appendChild(b)});
+  $('sendBtn').disabled=!selTime;
+  $('sendBtn').textContent=selTime?'ยืนยัน '+dmy(selDate)+' เวลา '+selTime+' น.':'ยืนยันวันและเวลา';
+}
+async function send(){
+  if(!selDate||!selTime)return;
+  $('sendBtn').disabled=true;$('msg').textContent='กำลังส่งวันและเวลาที่เลือก...';$('err').textContent='';
   try{
     await ready;
     if(!liff.isInClient())throw Error('กรุณาเปิดจากแชต LINE โดยตรง');
     const t=liff.getContext()&&liff.getContext().type;
     if(t&&!['utou','group','room'].includes(t))throw Error('กรุณาเปิดลิงก์นี้จากห้องแชต LINE (ไม่ใช่จากเมนู/เบราว์เซอร์)');
-    await liff.sendMessages([{type:'text',text:(step==='pickup'?'เลือกวันรับรถ ':'เลือกวันคืนรถ ')+dmy(date)}]);
-    $('msg').textContent='ส่งวันที่เรียบร้อยแล้ว';setTimeout(()=>liff.closeWindow(),300);
-  }catch(e){$('msg').textContent='';$('err').textContent='ส่งไม่สำเร็จ: '+(e.code?e.code+' - ':'')+(e.message||e)}
+    await liff.sendMessages([{type:'text',text:(step==='pickup'?'เลือกวันรับรถ ':'เลือกวันคืนรถ ')+dmy(selDate)+' เวลา '+selTime+' น.'}]);
+    $('msg').textContent='ส่งเรียบร้อยแล้ว';setTimeout(()=>liff.closeWindow(),300);
+  }catch(e){$('sendBtn').disabled=false;$('msg').textContent='';$('err').textContent='ส่งไม่สำเร็จ: '+(e.code?e.code+' - ':'')+(e.message||e)}
 }
+$('sendBtn').onclick=send;
 $('prevBtn').onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()-1,1);draw()};
 $('nextBtn').onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()+1,1);draw()};
 $('yearLabel').onclick=()=>{$('monthPicker').classList.remove('show');$('yearPicker').classList.toggle('show');years()};
