@@ -74,7 +74,7 @@ main{padding:16px}.nav{display:flex;align-items:center;justify-content:space-bet
 <div id="recap" class="recap"></div>
 <button id="sendBtn" class="send" disabled>กรุณาเลือกวันรับรถ</button>
 <div id="msg"></div><div id="err"></div>
-<div style="text-align:center;color:#d0d5dd;font-size:11px;margin-top:18px">v11 · 2026-11-12</div>
+<div style="text-align:center;color:#d0d5dd;font-size:11px;margin-top:18px">v12 · 2026-11-12</div>
 </main></div>
 <script>
 const LIFF_ID='2012569735-v6ST3dSo';
@@ -234,10 +234,10 @@ async function send(){
     if(!liff.isInClient())throw Error('กรุณาเปิดจากแชต LINE โดยตรง');
     const t=liff.getContext()&&liff.getContext().type;
     if(t&&!['utou','group','room'].includes(t))throw Error('กรุณาเปิดลิงก์นี้จากห้องแชต LINE (ไม่ใช่จากเมนู/เบราว์เซอร์)');
-    // ส่ง 2 ข้อความ รูปแบบเดิมที่บอทอ่านได้ (รับรถ / คืนรถ)
+    // ส่งข้อความเดียว ครบทั้งรับ-คืน (v12)
     await liff.sendMessages([
-      {type:'text',text:'เลือกวันรับรถ '+dmy(pickupDate)+' เวลา '+pickTime+' น. สถานที่ '+pl.replace(/\s+/g,' ')},
-      {type:'text',text:'เลือกวันคืนรถ '+dmy(returnDate)+' เวลา '+retTime+' น. สถานที่ '+rl.replace(/\s+/g,' ')}
+      {type:'text',text:'เลือกวันรับรถ '+dmy(pickupDate)+' เวลา '+pickTime+' น. สถานที่ '+pl.replace(/\s+/g,' ')
+        +'\nวันคืนรถ '+dmy(returnDate)+' เวลา '+retTime+' น. สถานที่ '+rl.replace(/\s+/g,' ')}
     ]);
     $('msg').textContent='ส่งเรียบร้อยแล้ว';setTimeout(()=>liff.closeWindow(),300);
   }catch(e){$('sendBtn').disabled=false;$('msg').textContent='';$('err').textContent='ส่งไม่สำเร็จ: '+(e.code?e.code+' - ':'')+(e.message||e)}
