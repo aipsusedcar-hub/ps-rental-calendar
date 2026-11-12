@@ -35,7 +35,7 @@ main{padding:16px}.nav{display:flex;align-items:center;justify-content:space-bet
 #msg,#err{font-size:13px;text-align:center;margin-top:14px}#err{color:#b42318}
 </style></head>
 <body><div class="app">
-<div class="head"><b>เลือกวันเช่ารถ</b><div class="hint">กดเลือกวันที่ แล้วเลือกเวลาและสถานที่ได้เลย</div>
+<div class="head"><b>เลือกวันเช่ารถ</b><div class="hint">กดเลือกวันที่ แล้วเลือกสถานที่และเวลาได้เลย</div>
 <div class="tabs"><button id="tabPickup">วันรับรถ<small id="pickTxt">-</small></button><button id="tabReturn">วันคืนรถ<small id="retTxt">-</small></button></div></div>
 <main>
 <div class="nav"><button id="prevBtn" aria-label="เดือนก่อน">‹</button><button id="yearLabel" class="label"></button><button id="nextBtn" aria-label="เดือนถัดไป">›</button></div>
@@ -43,9 +43,9 @@ main{padding:16px}.nav{display:flex;align-items:center;justify-content:space-bet
 <div class="nav"><button id="monthLabel" class="label" style="width:auto"></button><span></span><span></span></div>
 <div class="week"><div>อา</div><div>จ</div><div>อ</div><div>พ</div><div>พฤ</div><div>ศ</div><div>ส</div></div>
 <div id="grid" class="grid"></div>
-<div id="timeBox" class="timebox"><div class="tt" id="timeTitle"></div><div id="times" class="times"></div><div class="tt" id="locTitle" style="margin-top:16px"></div><div id="locs" class="locs"></div><input id="locIn" class="locin" maxlength="120" placeholder="พิมพ์สถานที่ เช่น โรงแรม..., ที่อยู่"><button id="sendBtn" class="send" disabled>ยืนยันวัน เวลา และสถานที่</button></div>
+<div id="timeBox" class="timebox"><div class="tt" id="locTitle"></div><div id="locs" class="locs"></div><input id="locIn" class="locin" maxlength="120" placeholder="พิมพ์สถานที่ เช่น โรงแรม..., ที่อยู่"><div class="tt" id="timeTitle" style="margin-top:16px"></div><div id="times" class="times"></div><button id="sendBtn" class="send" disabled>ยืนยันวัน สถานที่ และเวลา</button></div>
 <div id="msg"></div><div id="err"></div>
-<div style="text-align:center;color:#d0d5dd;font-size:11px;margin-top:18px">v6 · 2026-11-12</div>
+<div style="text-align:center;color:#d0d5dd;font-size:11px;margin-top:18px">v7 · 2026-11-12</div>
 </main></div>
 <script>
 const LIFF_ID='2012569735-v6ST3dSo';
@@ -119,7 +119,7 @@ function drawLocs(){
 function updSend(){
   const l=locVal(),ok=selTime&&l&&l.length>=2;
   $('sendBtn').disabled=!ok;
-  $('sendBtn').textContent=ok?'ยืนยัน '+dmy(selDate)+' '+selTime+' น. · '+l:(!selTime?'กรุณาเลือกเวลา':'กรุณาเลือกสถานที่');
+  $('sendBtn').textContent=ok?'ยืนยัน '+dmy(selDate)+' '+selTime+' น. · '+l:(!(l&&l.length>=2)?'กรุณาเลือกสถานที่':'กรุณาเลือกเวลา');
 }
 async function send(){
   const loc=locVal();if(!selDate||!selTime||!loc||loc.length<2)return;
