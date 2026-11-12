@@ -22,10 +22,10 @@ main{padding:16px}.nav{display:flex;align-items:center;justify-content:space-bet
 .day{height:44px;border:0;background:#fff;border-radius:22px;font-size:16px;cursor:pointer}
 .day:disabled{color:#d0d5dd;cursor:default}.day.today{outline:1px solid var(--o);color:var(--o)}
 .day.sel{background:var(--o);color:#fff;font-weight:700}.day.inrange{background:#ffedd5;border-radius:6px}
-.tabs button.on{background:#fff;color:var(--o);font-weight:700}
 .sum{margin-top:16px;border-top:1px solid var(--line);padding-top:14px;font-size:15px;text-align:center}.sum b{color:var(--o)}
-.timebox{display:none;margin-top:16px;border-top:1px solid var(--line);padding-top:14px}.timebox.show{display:block}
+.sec{display:none;margin-top:18px;border-top:1px solid var(--line);padding-top:14px}.sec.show{display:block}
 .tt{font-weight:700;font-size:16px;margin-bottom:10px}.tt span{color:var(--o)}
+.tt i{display:inline-block;width:22px;height:22px;line-height:22px;border-radius:11px;background:var(--o);color:#fff;font-style:normal;font-size:13px;text-align:center;margin-right:7px}
 .times{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .times button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 0;font-size:15px;cursor:pointer}
 .times button.sel{background:var(--o);border-color:var(--o);color:#fff;font-weight:700}.times button:disabled{color:#d0d5dd;cursor:default}
@@ -33,11 +33,12 @@ main{padding:16px}.nav{display:flex;align-items:center;justify-content:space-bet
 .locs button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 0;font-size:15px;cursor:pointer}
 .locs button.sel{background:var(--o);border-color:var(--o);color:#fff;font-weight:700}
 .locin{display:none;width:100%;margin-top:8px;border:1px solid var(--o);border-radius:10px;padding:11px;font-size:15px}.locin.show{display:block}
+.recap{display:none;margin-top:18px;background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:13px;font-size:14px;line-height:1.7}.recap.show{display:block}.recap b{color:var(--o)}
 .send{width:100%;margin-top:14px;border:0;border-radius:12px;padding:14px;background:var(--o);color:#fff;font-size:16px;font-weight:700;cursor:pointer}.send:disabled{background:#fed7aa}
 #msg,#err{font-size:13px;text-align:center;margin-top:14px}#err{color:#b42318}
 </style></head>
 <body><div class="app">
-<div class="head"><b>เลือกวันเช่ารถ</b><div class="hint">แตะวันรับรถ แล้วแตะวันคืนรถ จากนั้นกดยืนยัน</div>
+<div class="head"><b>เลือกวันเช่ารถ</b><div class="hint">แตะวันรับรถ แล้วแตะวันคืนรถ จากนั้นเลือกสถานที่และเวลา</div>
 <div class="tabs"><button id="tabPickup">วันรับรถ<small id="pickTxt">-</small></button><button id="tabReturn">วันคืนรถ<small id="retTxt">-</small></button></div></div>
 <main>
 <div class="nav"><button id="prevBtn" aria-label="เดือนก่อน">‹</button><button id="yearLabel" class="label"></button><button id="nextBtn" aria-label="เดือนถัดไป">›</button></div>
@@ -46,9 +47,25 @@ main{padding:16px}.nav{display:flex;align-items:center;justify-content:space-bet
 <div class="week"><div>อา</div><div>จ</div><div>อ</div><div>พ</div><div>พฤ</div><div>ศ</div><div>ส</div></div>
 <div id="grid" class="grid"></div>
 <div class="sum" id="sum">กรุณาแตะเลือก<b>วันรับรถ</b></div>
+
+<div id="secPickLoc" class="sec"><div class="tt"><i>1</i>สถานที่รับรถ</div>
+  <div id="pickLocs" class="locs"></div>
+  <input id="pickLocIn" class="locin" maxlength="120" placeholder="พิมพ์สถานที่รับรถ เช่น โรงแรม..., ที่อยู่"></div>
+
+<div id="secPickTime" class="sec"><div class="tt"><i>2</i>เวลารับรถ · <span id="pickTimeDay"></span></div>
+  <div id="pickTimes" class="times"></div></div>
+
+<div id="secRetLoc" class="sec"><div class="tt"><i>3</i>สถานที่คืนรถ</div>
+  <div id="retLocs" class="locs"></div>
+  <input id="retLocIn" class="locin" maxlength="120" placeholder="พิมพ์สถานที่คืนรถ เช่น โรงแรม..., ที่อยู่"></div>
+
+<div id="secRetTime" class="sec"><div class="tt"><i>4</i>เวลาคืนรถ · <span id="retTimeDay"></span></div>
+  <div id="retTimes" class="times"></div></div>
+
+<div id="recap" class="recap"></div>
 <button id="sendBtn" class="send" disabled>กรุณาเลือกวันรับรถ</button>
 <div id="msg"></div><div id="err"></div>
-<div style="text-align:center;color:#d0d5dd;font-size:11px;margin-top:18px">v8 · 2026-11-12</div>
+<div style="text-align:center;color:#d0d5dd;font-size:11px;margin-top:18px">v9 · 2026-11-12</div>
 </main></div>
 <script>
 const LIFF_ID='2012569735-v6ST3dSo';
@@ -58,11 +75,17 @@ const now=new Date(),minDate=new Date(now.getFullYear(),now.getMonth(),now.getDa
 const mAbbr=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 const dmy=d=>d.getDate()+' '+mAbbr[d.getMonth()]+' '+(d.getFullYear()+543);
 const th=d=>d?dmy(d):'-';
-// v8: เลือกวันรับ + วันคืนในปฏิทินเดียว (แตะครั้งแรก = วันรับ, ครั้งที่สอง = วันคืน)
+// สถานที่รับ-คืนรถ (ตรงกับปุ่มในแชตบอต)
+const LOCS=['บขส.','สนามบิน','อื่นๆ'];
+// ช่วงเวลา 08:00–18:00 ทุก 30 นาที (แก้ตรงนี้ได้)
+const TIMES=[];for(let h=8;h<=18;h++){TIMES.push(String(h).padStart(2,'0')+':00');if(h<18)TIMES.push(String(h).padStart(2,'0')+':30')}
+// v9: ปฏิทินเดียวเลือกวันรับ+วันคืน แล้วไล่ สถานที่รับ → เวลารับ → สถานที่คืน → เวลาคืน → ยืนยัน
 let pickupDate=null,returnDate=null,focus='pickup';
+let pickLoc=null,pickTime=null,retLoc=null,retTime=null;
 let view=new Date(minDate.getFullYear(),minDate.getMonth(),1);
 const ready=liff.init({liffId:LIFF_ID}).catch(e=>{$('err').textContent='เปิด LIFF ไม่สำเร็จ: '+(e.message||e);throw e});
 const sameDay=(a,b)=>a&&b&&a.toDateString()===b.toDateString();
+
 function draw(){
   $('yearLabel').textContent=view.getFullYear()+543;$('monthLabel').textContent=months[view.getMonth()];
   $('pickTxt').textContent=th(pickupDate);$('retTxt').textContent=th(returnDate);
@@ -84,14 +107,6 @@ function draw(){
   $('nextBtn').disabled=view>=new Date(maxDate.getFullYear(),maxDate.getMonth(),1);
   upd();
 }
-function upd(){
-  const ok=pickupDate&&returnDate;
-  if(!pickupDate)$('sum').innerHTML='กรุณาแตะเลือก<b>วันรับรถ</b>';
-  else if(!returnDate)$('sum').innerHTML='รับรถ <b>'+dmy(pickupDate)+'</b><br>แตะเลือก<b>วันคืนรถ</b> ต่อได้เลยค่ะ';
-  else{const n=Math.round((returnDate-pickupDate)/86400000)+1;$('sum').innerHTML='รับรถ <b>'+dmy(pickupDate)+'</b> → คืนรถ <b>'+dmy(returnDate)+'</b><br>รวม '+n+' วัน'}
-  $('sendBtn').disabled=!ok;
-  $('sendBtn').textContent=ok?'ยืนยันวันรับ-คืนรถ':(!pickupDate?'กรุณาเลือกวันรับรถ':'กรุณาเลือกวันคืนรถ');
-}
 function clampView(){const lo=new Date(minDate.getFullYear(),minDate.getMonth(),1),hi=new Date(maxDate.getFullYear(),maxDate.getMonth(),1);if(view<lo)view=lo;if(view>hi)view=hi}
 function years(){const p=$('yearPicker');p.innerHTML='';for(let y=minDate.getFullYear();y<=maxDate.getFullYear();y++){const b=document.createElement('button');b.textContent=y+543;b.className=y===view.getFullYear()?'active':'';b.onclick=()=>{view=new Date(y,view.getMonth(),1);clampView();p.classList.remove('show');draw()};p.appendChild(b)}}
 function mons(){const p=$('monthPicker');p.innerHTML='';for(let m=0;m<12;m++){const b=document.createElement('button');b.textContent=months[m];b.disabled=new Date(view.getFullYear(),m+1,0)<minDate||new Date(view.getFullYear(),m,1)>maxDate;b.className=m===view.getMonth()?'active':'';b.onclick=()=>{view=new Date(view.getFullYear(),m,1);p.classList.remove('show');draw()};p.appendChild(b)}}
@@ -99,21 +114,93 @@ function pick(date){
   $('err').textContent='';$('msg').textContent='';
   if(focus==='pickup'||!pickupDate||date<pickupDate){pickupDate=date;if(returnDate&&returnDate<date)returnDate=null;focus='return'}
   else{returnDate=date}
+  // เปลี่ยนวันแล้วต้องเลือกสถานที่/เวลาใหม่
+  pickLoc=null;pickTime=null;retLoc=null;retTime=null;$('pickLocIn').value='';$('retLocIn').value='';
   draw();
+  if(pickupDate&&returnDate)setTimeout(()=>$('secPickLoc').scrollIntoView({behavior:'smooth',block:'start'}),60);
+}
+const locVal=(sel,inId)=>sel==='อื่นๆ'?$(inId).value.trim():sel;
+const pickLocVal=()=>locVal(pickLoc,'pickLocIn');
+const retLocVal=()=>locVal(retLoc,'retLocIn');
+const okLoc=v=>!!v&&v.length>=2;
+
+function drawLocs(boxId,inId,cur,set){
+  const box=$(boxId);box.innerHTML='';
+  LOCS.forEach(v=>{const b=document.createElement('button');b.textContent=v==='อื่นๆ'?'อื่นๆ (พิมพ์)':v;if(v===cur)b.classList.add('sel');
+    b.onclick=()=>{set(v);if(v==='อื่นๆ')setTimeout(()=>$(inId).focus(),50)};box.appendChild(b)});
+  $(inId).classList.toggle('show',cur==='อื่นๆ');
+}
+function drawTimes(boxId,day,cur,set,notBefore){
+  const box=$(boxId);box.innerHTML='';
+  const n=new Date(),isToday=sameDay(day,n),curMin=n.getHours()*60+n.getMinutes();
+  TIMES.forEach(t=>{const b=document.createElement('button');b.textContent=t;const[h,m]=t.split(':').map(Number);
+    if(isToday&&h*60+m<=curMin)b.disabled=true;
+    if(notBefore&&h*60+m<notBefore)b.disabled=true;
+    if(t===cur)b.classList.add('sel');
+    b.onclick=()=>set(t);box.appendChild(b)});
+}
+function upd(){
+  // สรุปวัน
+  if(!pickupDate)$('sum').innerHTML='กรุณาแตะเลือก<b>วันรับรถ</b>';
+  else if(!returnDate)$('sum').innerHTML='รับรถ <b>'+dmy(pickupDate)+'</b><br>แตะเลือก<b>วันคืนรถ</b> ต่อได้เลยค่ะ';
+  else{const n=Math.round((returnDate-pickupDate)/86400000)+1;$('sum').innerHTML='รับรถ <b>'+dmy(pickupDate)+'</b> → คืนรถ <b>'+dmy(returnDate)+'</b> · รวม '+n+' วัน'}
+
+  const bothDates=!!(pickupDate&&returnDate);
+  const s1=bothDates, s2=s1&&okLoc(pickLocVal()), s3=s2&&!!pickTime, s4=s3&&okLoc(retLocVal());
+  const done=s4&&!!retTime;
+
+  // 1 สถานที่รับรถ
+  $('secPickLoc').classList.toggle('show',s1);
+  if(s1)drawLocs('pickLocs','pickLocIn',pickLoc,v=>{pickLoc=v;upd()});
+  // 2 เวลารับรถ
+  $('secPickTime').classList.toggle('show',s2);
+  if(s2){$('pickTimeDay').textContent=dmy(pickupDate);drawTimes('pickTimes',pickupDate,pickTime,t=>{pickTime=t;upd()},null)}
+  // 3 สถานที่คืนรถ
+  $('secRetLoc').classList.toggle('show',s3);
+  if(s3)drawLocs('retLocs','retLocIn',retLoc,v=>{retLoc=v;upd()});
+  // 4 เวลาคืนรถ (ถ้าคืนวันเดียวกับวันรับ ต้องหลังเวลารับ)
+  $('secRetTime').classList.toggle('show',s4);
+  if(s4){
+    $('retTimeDay').textContent=dmy(returnDate);
+    let nb=null;
+    if(sameDay(pickupDate,returnDate)&&pickTime){const[h,m]=pickTime.split(':').map(Number);nb=h*60+m+30}
+    if(nb&&retTime){const[h,m]=retTime.split(':').map(Number);if(h*60+m<nb)retTime=null}
+    drawTimes('retTimes',returnDate,retTime,t=>{retTime=t;upd()},nb);
+  }
+
+  // สรุปก่อนยืนยัน
+  $('recap').classList.toggle('show',done);
+  if(done)$('recap').innerHTML='📅 <b>รับรถ</b> '+dmy(pickupDate)+' เวลา '+pickTime+' น.<br>📍 '+pickLocVal()
+    +'<hr style="border:0;border-top:1px dashed #fed7aa;margin:8px 0">📅 <b>คืนรถ</b> '+dmy(returnDate)+' เวลา '+retTime+' น.<br>📍 '+retLocVal();
+
+  $('sendBtn').disabled=!done;
+  $('sendBtn').textContent=done?'ยืนยันการจอง':
+    !pickupDate?'กรุณาเลือกวันรับรถ':
+    !returnDate?'กรุณาเลือกวันคืนรถ':
+    !s2?'กรุณาเลือกสถานที่รับรถ':
+    !s3?'กรุณาเลือกเวลารับรถ':
+    !s4?'กรุณาเลือกสถานที่คืนรถ':'กรุณาเลือกเวลาคืนรถ';
 }
 async function send(){
-  if(!pickupDate||!returnDate)return;
+  const pl=pickLocVal(),rl=retLocVal();
+  if(!pickupDate||!returnDate||!pickTime||!retTime||!okLoc(pl)||!okLoc(rl))return;
   $('sendBtn').disabled=true;$('msg').textContent='กำลังส่งข้อมูลที่เลือก...';$('err').textContent='';
   try{
     await ready;
     if(!liff.isInClient())throw Error('กรุณาเปิดจากแชต LINE โดยตรง');
     const t=liff.getContext()&&liff.getContext().type;
     if(t&&!['utou','group','room'].includes(t))throw Error('กรุณาเปิดลิงก์นี้จากห้องแชต LINE (ไม่ใช่จากเมนู/เบราว์เซอร์)');
-    await liff.sendMessages([{type:'text',text:'เลือกวันรับรถ '+dmy(pickupDate)+' วันคืนรถ '+dmy(returnDate)}]);
+    // ส่ง 2 ข้อความ รูปแบบเดิมที่บอทอ่านได้ (รับรถ / คืนรถ)
+    await liff.sendMessages([
+      {type:'text',text:'เลือกวันรับรถ '+dmy(pickupDate)+' เวลา '+pickTime+' น. สถานที่ '+pl.replace(/\s+/g,' ')},
+      {type:'text',text:'เลือกวันคืนรถ '+dmy(returnDate)+' เวลา '+retTime+' น. สถานที่ '+rl.replace(/\s+/g,' ')}
+    ]);
     $('msg').textContent='ส่งเรียบร้อยแล้ว';setTimeout(()=>liff.closeWindow(),300);
   }catch(e){$('sendBtn').disabled=false;$('msg').textContent='';$('err').textContent='ส่งไม่สำเร็จ: '+(e.code?e.code+' - ':'')+(e.message||e)}
 }
 $('sendBtn').onclick=send;
+$('pickLocIn').oninput=upd;
+$('retLocIn').oninput=upd;
 $('prevBtn').onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()-1,1);draw()};
 $('nextBtn').onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()+1,1);draw()};
 $('yearLabel').onclick=()=>{$('monthPicker').classList.remove('show');$('yearPicker').classList.toggle('show');years()};
